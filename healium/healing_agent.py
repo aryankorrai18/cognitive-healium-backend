@@ -347,6 +347,12 @@ class SelfHealingPage:
             tenant_id=tenant_id,
         )
 
+    def __getattr__(self, name):
+        """Proxy all other attributes to the real Playwright Page.
+        This means page.locator(), page.evaluate(), page.screenshot() etc. all work normally.
+        """
+        return getattr(self._page, name)
+
     @property
     def page(self):
         return self._page
