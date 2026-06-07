@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cognitive Healium - Live Dashboard</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0f0f1a; color: #e0e0e0;
+            padding: 20px; margin: 0;
+        }
+        h1 {
+            color: #00e676;
+            border-bottom: 2px solid #1a1a2e;
+            padding-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        #stats-bar {
+            display: flex; gap: 30px;
+            background: #1a1a2e; padding: 15px 20px;
+            border-radius: 12px; margin-bottom: 20px;
+            font-size: 14px; border: 1px solid #2a2a4a;
+            flex-wrap: wrap;
+        }
+        #stats-bar strong { font-size: 18px; }
+        .event-card {
+            background: #1a1a2e; border: 1px solid #2a2a4a;
+            border-radius: 12px; padding: 20px; margin-bottom: 20px;
+            animation: fadeIn 0.5s;
+        }
+        .event-card.healed { border-left: 6px solid #00e676; }
+        .event-card.failed { border-left: 6px solid #ff5252; }
+        .header-row {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 15px;
+        }
+        .badge {
+            padding: 4px 10px; border-radius: 6px;
+            font-size: 12px; font-weight: bold; text-transform: uppercase;
+            margin-left: 4px;
+        }
+        .badge.ai     { background: rgba(179,136,255,0.2); color: #b388ff; }
+        .badge.cache  { background: rgba(68,138,255,0.2);  color: #448aff; }
+        .badge.none   { background: rgba(100,100,100,0.2); color: #888; }
+        .badge.healed { background: rgba(0,230,118,0.2);   color: #00e676; }
+        .badge.failed { background: rgba(255,82,82,0.2);   color: #ff5252; }
+        .main-row {
+            display: grid; grid-template-columns: 1fr 250px; gap: 20px;
+        }
+        @media (max-width: 700px) { .main-row { grid-template-columns: 1fr; } }
+        .locator-flow {
+            font-family: 'Fira Code', monospace;
+            background: #0f0f1a; padding: 15px; border-radius: 8px;
+            margin: 10px 0; font-size: 13px; word-break: break-all;
+        }
+        .old-loc { color: #ff5252; text-decoration: line-through; }
+        .arrow   { color: #888; margin: 0 10px; font-weight: bold; }
+        .new-loc { color: #00e676; font-weight: bold; }
+        .reasoning {
+            color: #aaa; font-size: 13px; font-style: italic;
+            margin-top: 10px; border-top: 1px solid #2a2a4a; padding-top: 10px;
+        }
+        .confidence-bar {
+            height: 6px; background: #2a2a4a; border-radius: 3px; margin-top: 8px;
+        }
+        .confidence-fill { height: 100%; border-radius: 3px; }
+        .screenshot-box {
+            background: #0f0f1a; border-radius: 8px; border: 1px solid #2a2a4a;
+            overflow: hidden; display: flex; align-items: center;
+            justify-content: center; height: 220px; position: relative;
+        }
+        .screenshot-box img {
+            max-width: 100%; max-height: 100%; object-fit: contain;
+        }
+        .screenshot-label {
+            position: absolute; top: 5px; left: 5px;
+            background: rgba(0,0,0,0.7); color: #fff;
+            font-size: 10px; padding: 2px 6px; border-radius: 4px;
+        }
+        .no-screenshot { color: #555; font-size: 13px; text-align: center; }
+        .code-fix {
+            margin-top: 15px; display: flex; align-items: center; gap: 10px;
+        }
+        .code-snippet {
+            background: #0f0f1a; color: #448aff; padding: 8px 12px;
+            border-radius: 6px; font-family: monospace; font-size: 12px;
+            flex-grow: 1; border: 1px solid #2a2a4a; word-break: break-all;
+        }
+        .copy-btn {
+            background: #448aff; color: white; border: none;
+            padding: 8px 15px; border-radius: 6px; cursor: pointer;
+            font-weight: bold; font-size: 13px; white-space: nowrap;
+        }
+        .copy-btn:hover { background: #2979ff; }
+        .x-ray-toggle { margin-top: 15px; }
+        .x-ray-toggle summary {
+            color: #b388ff; cursor: pointer; font-weight: bold; font-size: 13px;
+        }
+        .x-ray-content {
+            margin-top: 10px; display: grid;
+            grid-template-columns: 1fr 1fr; gap: 15px;
+        }
+        @media (max-width: 700px) { .x-ray-content { grid-template-columns: 1fr; } }
+        .data-box {
+            background: #0f0f1a; padding: 10px; border-radius: 6px;
+            border: 1px solid #2a2a4a; font-size: 11px; font-family: monospace;
+            max-height: 200px; overflow-y: auto; white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .data-box h4 { margin: 0 0 5px 0; color: #448aff; font-size: 12px; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0%,100% { opacity: 0.3; transform: scale(0.8); }
+            50%      { opacity: 1;   transform: scale(1.2); }
+        }
+        .loading-dot {
+            width: 8px; height: 8px; background: #00e676; border-radius: 50%;
+            display: inline-block; animation: pulse 1.2s ease-in-out infinite;
+        }
+        #ws-status { font-size: 16px; }
+        .connected    { color: #00e676; }
+        .disconnected { color: #ff5252; }
+    </style>
+</head>
+<body>
+    <h1>
+        &#x1F9EC; Cognitive Healium
+        <span id="ws-status" class="disconnected">&#9679; OFFLINE</span>
+    </h1>
+
+    <div id="stats-bar">
+        <div>&#x1F7E2; Healed: <strong id="s-healed" style="color:#00e676">0</strong></div>
+        <div>&#x1F534; Failed: <strong id="s-failed" style="color:#ff5252">0</strong></div>
+        <div>&#x26A1; Cache Hits: <strong id="s-cache" style="color:#448aff">0</strong></div>
+        <div>&#x1F9E0; AI Calls: <strong id="s-ai" style="color:#b388ff">0</strong></div>
+        <div>&#x1F4C8; Avg Confidence:
+            <strong id="s-conf" style="color:#ffab40">-</strong>
+        </div>
+    </div>
+
+    <div id="events-container">
+        <div class="event-card" id="waiting-card"
+             style="text-align:center; padding:40px;">
+            <div style="font-size:32px; margin-bottom:10px;">&#x1F9EC;</div>
+            <div style="color:#00e676; font-size:18px; font-weight:bold;">
+                Cognitive Healium
+            </div>
+            <div style="color:#888; margin-top:8px;">
+                Waiting for LangGraph agent to connect...
+            </div>
+            <div style="margin-top:20px; display:flex;
+                        justify-content:center; gap:6px;">
+                <span class="loading-dot" style="animation-delay:0s"></span>
+                <span class="loading-dot" style="animation-delay:0.2s"></span>
+                <span class="loading-dot" style="animation-delay:0.4s"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ws        = new WebSocket("ws://localhost:8000/ws");
+        const container = document.getElementById("events-container");
+        const status    = document.getElementById("ws-status");
+        let stats = {
+            healed: 0, failed: 0, cache: 0,
+            ai: 0, totalConf: 0, aiCount: 0
+        };
+
+        ws.onopen = () => {
+            status.textContent = "\u25CF LIVE";
+            status.className   = "connected";
+            const w = document.getElementById("waiting-card");
+            if (w) w.remove();
+        };
+        ws.onclose = () => {
+            status.textContent = "\u25CF OFFLINE";
+            status.className   = "disconnected";
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.status === "healed") stats.healed++;
+            else stats.failed++;
+            if (data.source === "cache") stats.cache++;
+            if (data.source === "ai") {
+                stats.ai++;
+                stats.totalConf += data.confidence;
+                stats.aiCount++;
+            }
+            document.getElementById("s-healed").textContent = stats.healed;
+            document.getElementById("s-failed").textContent = stats.failed;
+            document.getElementById("s-cache").textContent  = stats.cache;
+            document.getElementById("s-ai").textContent     = stats.ai;
+            document.getElementById("s-conf").textContent   = stats.aiCount
+                ? (stats.totalConf / stats.aiCount * 100).toFixed(0) + "%" : "-";
+
+            const card    = document.createElement("div");
+            card.className = `event-card ${data.status}`;
+
+            const confPct   = (data.confidence * 100).toFixed(0);
+            const confColor = confPct > 85 ? "#00e676"
+                            : confPct > 60 ? "#ffab40" : "#ff5252";
+
+            const screenshotHtml = data.screenshot_url
+                ? `<div class="screenshot-box">
+                     <span class="screenshot-label">VISUAL VERIFICATION</span>
+                     <img src="${data.screenshot_url}" alt="Healed element">
+                   </div>`
+                : `<div class="screenshot-box">
+                     <div class="no-screenshot">No screenshot</div>
+                   </div>`;
+
+            const codeFixHtml = data.code_fix
+                ? `<div class="code-fix">
+                     <div class="code-snippet">${data.code_fix}</div>
+                     <button class="copy-btn"
+                       data-code="${encodeURIComponent(data.code_fix)}"
+                       onclick="copyCode(this)">Copy Fix</button>
+                   </div>`
+                : "";
+
+            const domText = (data.dom_context || "No DOM captured")
+                .replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const ragText = data.rag_context || "No RAG context";
+
+            card.innerHTML = `
+                <div class="main-row">
+                    <div>
+                        <div class="header-row">
+                            <div>
+                                <strong>${data.action.toUpperCase()}</strong>
+                                &nbsp;|&nbsp;
+                                <span style="color:#aaa">${data.intent}</span>
+                            </div>
+                            <div>
+                                <span class="badge ${data.source}">${data.source}</span>
+                                <span class="badge ${data.status}">${data.status}</span>
+                            </div>
+                        </div>
+                        <div class="locator-flow">
+                            <span class="old-loc">${data.original_locator}</span>
+                            <span class="arrow">&rarr;</span>
+                            <span class="new-loc">
+                                ${data.healed_locator || "NO MATCH"}
+                            </span>
+                        </div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill"
+                                 style="width:${confPct}%;background:${confColor}">
+                            </div>
+                        </div>
+                        ${data.reasoning
+                            ? `<div class="reasoning">
+                                 &#x1F4A1; AI Reasoning: ${data.reasoning}
+                               </div>`
+                            : ""}
+                        ${codeFixHtml}
+                    </div>
+                    <div>${screenshotHtml}</div>
+                </div>
+                <details class="x-ray-toggle">
+                    <summary>&#x1F52C; Under the Hood (LangGraph Data Flow)</summary>
+                    <div class="x-ray-content">
+                        <div class="data-box">
+                            <h4>&#x1F4C4; Context Sent to LLM</h4>${domText}
+                        </div>
+                        <div class="data-box">
+                            <h4>&#x1F9E0; RAG Context (ChromaDB)</h4>${ragText}
+                        </div>
+                    </div>
+                </details>
+            `;
+
+            container.prepend(card);
+        };
+
+        function copyCode(btn) {
+            const code = decodeURIComponent(btn.dataset.code);
+            navigator.clipboard.writeText(code);
+            btn.textContent = "Copied!";
+            setTimeout(() => btn.textContent = "Copy Fix", 1500);
+        }
+    </script>
+</body>
+</html>

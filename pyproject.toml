@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cognitive-healium"
+version = "2.0.0"
+description = "Self-Healing Test Automation SDK — LangGraph + Groq + ChromaDB"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph",
+    "langchain-groq",
+    "langchain-core",
+    "playwright",
+    "chromadb",
+    "beautifulsoup4",
+    "lxml",
+    "fastapi",
+    "uvicorn",
+    "selenium",
+    "httpx",
+    "python-dotenv",
+    "rich",
+    "requests",
+]
+
+[project.optional-dependencies]
+redis    = ["redis"]
+postgres = ["psycopg2-binary"]
+aws      = ["boto3"]
+all      = ["redis", "psycopg2-binary", "boto3"]
+dev      = ["pytest", "pytest-playwright", "webdriver-manager"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["healium*"]
+
+[project.entry-points."pytest11"]
+healium = "healium.plugin"
