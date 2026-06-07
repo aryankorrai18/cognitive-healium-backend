@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cognitive-healium"
 version = "2.0.0"
-description = "Self-Healing Test Automation SDK — LangGraph + Groq + ChromaDB"
+description = "Self-Healing Test Automation SDK - LangGraph + Groq + ChromaDB"
 requires-python = ">=3.11"
 dependencies = [
     "langgraph",
